@@ -21,4 +21,5 @@ export const buildTypeOrmOptions = (
   // Dev convenience: builds the schema from the entities on boot.
   synchronize: config.get<string>('DB_SYNCHRONIZE', 'false') === 'true',
   logging: config.get<string>('DB_LOGGING', 'false') === 'true',
+  ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 });
