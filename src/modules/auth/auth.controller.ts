@@ -27,7 +27,7 @@ import { RefreshRequestUser } from './strategies/jwt-refresh.strategy';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Public()
+  // @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new account (role EMPLOYEE)' })
   @ApiOkResponse({ type: TokensDto })
