@@ -1,0 +1,85 @@
+# Badem CRM — demo deploy (Render free tier + Neon Postgres)
+# Put this file in the root of badem-crm-api, then on Render:
+#   New → Blueprint → select badem-crm-api repo.
+# Database lives on Neon (not Render), so the DB_* values are entered by hand
+# in the Render dashboard when the Blueprint asks for them (sync: false).
+
+services:
+    # ---------- Backend: NestJS ----------
+    - type: web
+      name: badem-crm-api
+      runtime: node
+      plan: free
+      region: frankfurt
+      branch: main
+      buildCommand: npm ci --include=dev && npm run build
+      startCommand: node dist/main
+      autoDeploy: true
+      envVars:
+          - key: NODE_VERSION
+            value: "22"
+          - key: NODE_ENV
+            value: production
+          - key: API_PREFIX
+            value: api
+
+          # Neon connection (copy from Neon → Connection details)
+          - key: DB_HOST
+            sync: false
+          - key: DB_PORT
+            value: "5432"
+          - key: DB_USERNAME
+            sync: false
+          - key: DB_PASSWORD
+            sync: false
+          - key: DB_NAME
+            sync: false
+          - key: DB_SSL
+            value: "true"
+          # Demo only: builds the schema from entities. Switch to migrations
+          # before any real data goes in.
+          - key: DB_SYNCHRONIZE
+            value: "true"
+          - key: DB_LOGGING
+            value: "false"
+          # Neon free tier has a small connection limit; keep the pool modest.
+          - key: DB_POOL_MAX
+            value: "5"
+
+          # JWT — Render generates long random secrets on first deploy.
+          - key: JWT_ACCESS_SECRET
+            generateValue: true
+          - key: JWT_ACCESS_EXPIRES_IN
+            value: 15m
+          - key: JWT_REFRESH_SECRET
+            generateValue: true
+          - key: JWT_REFRESH_EXPIRES_IN
+            value: 7d
+
+    # ---------- Frontend: Angular (static) ----------
+    - type: web
+      name: badem-ui
+      runtime: static
+      repo: https://github.com/AxrorxojayevAzamat/badem-ui
+      branch: main
+      buildCommand: npm ci && npm run build
+      staticPublishPath: dist/badem-web/browser
+      autoDeploy: true
+      envVars:
+          - key: NODE_VERSION
+            value: "22"
+      routes:
+          # 1) API calls go to the backend. The UI keeps calling '/api', so no
+          #    code change and no CORS. If Render gives the backend a different
+          #    URL (name taken), update it here.
+          - type: rewrite
+            source: /api/*
+            destination: https://badem-crm-api.onrender.com/api/*
+          # 2) SPA fallback: every other path serves index.html.
+          - type: rewrite
+            source: /*
+            destination: /index.html
+      headers:
+          - path: /index.html
+            name: Cache-Control
+            value: no-cache
